@@ -1,0 +1,205 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -416,
+        -80
+      ],
+      "id": "df83ac99-341a-4632-8499-6992143800b1",
+      "name": "When chat message received",
+      "webhookId": "93374943-58cd-4057-965e-bd5d2898e87a"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a movie assistant that communicates with the user in Czech.\n\nYour tasks:\n\nIf the user has not yet provided the name of a movie, ask: “Jaký film tě zajímá?” (“Which movie are you interested in?”)\n\nIf the user has provided a movie title, generate a short introduction to the movie (description, genre, director, year).\n\nIf you have access to the tool tavily_search, you may use it to obtain more accurate information about the movie.\n\nSuggest your own rating of the movie on a scale from 1 to 10. Remember this number internally as agent_rating.\n\nAsk the user to give their own rating (1–10) along with a short explanation.\n\nIf the user expresses disagreement with your rating and provides their own rating (e.g., “I would give it a 9 because…”):\n\nExtract the following values from the user’s message:\n\nmovie_title – the name of the movie\n\nuser_rating – the user’s rating (1–10)\n\nUse the AI tool postgres_query and insert the following values into the database table movie_ratings:\n\nmovie_title\n\nuser_rating\n\nagent_rating (your own rating)\n\ncomment\n\nAfter successfully calling the tool, confirm to the user in Czech that their rating has been saved to the database."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -208,
+        -80
+      ],
+      "id": "3567918d-d18e-4df9-add0-5431a5199b45",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        128
+      ],
+      "id": "699a3ac4-59e0-45f6-a751-284c57bf24f0",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "8WfvwxB9cYoooo6V",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -208,
+        128
+      ],
+      "id": "a374e76e-6315-4c36-ab20-3b207cc85012",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Save Rating",
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "movie_reviews",
+          "mode": "list",
+          "cachedResultName": "movie_reviews"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id__using_to_match_', ``, 'number') }}",
+            "rating": "={{ $fromAI('user_rating', `movie rating`, 'number') }}",
+            "movie_name": "={{ $fromAI('movie_title', `name of the movie`, 'string') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "movie_name",
+              "displayName": "movie_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        32,
+        112
+      ],
+      "id": "7f26a60c-2945-4e2b-8497-eb0fb4b41366",
+      "name": "Insert or update rows in a table in Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "9rL47OLBubAWk7bD",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table in Postgres": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a8b34bbd-be0e-4de3-894f-d96b0e0b7595",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "09fae6bebbda3bbfa26ae2b6d7632ba7cc849e2d6183e66707f660f0e30aac9e"
+  },
+  "id": "FZqVneTam0EBmofP",
+  "tags": []
+}
