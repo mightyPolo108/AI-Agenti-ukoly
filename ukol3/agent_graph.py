@@ -44,7 +44,7 @@ class AgentState(TypedDict):
 
 def _make_model() -> ChatOpenAI:
     load_dotenv()
-    model_name = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+    model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
     return ChatOpenAI(model=model_name, temperature=0.2)
 
 

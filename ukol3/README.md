@@ -12,7 +12,7 @@ CLI agent v Pythonu, který replikuje chování exportovaného n8n workflow: cha
 1) Zkopíruj `.env.example` do `.env` a doplň hodnoty:
    ```
    OPENAI_API_KEY=...
-   OPENAI_MODEL=gpt-4.1-mini
+   OPENAI_MODEL=gpt-4o-mini
    TAVILY_API_KEY=...
    DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db
    ```
@@ -29,7 +29,7 @@ CLI agent v Pythonu, který replikuje chování exportovaného n8n workflow: cha
 
 ## Spuštění (CLI chat)
 ```
-python app.py
+python main.py
 ```
 Příkazy pro ukončení: `exit`, `quit`, nebo Ctrl+D/Ctrl+C.
 
@@ -46,7 +46,7 @@ Paměť: posledních 10 zpráv (ekvivalent MemoryBufferWindow). Agent automatick
 ## Struktura
 ```
 .
-├─ app.py                  # CLI chat rozhraní
+├─ main.py                 # CLI chat rozhraní
 ├─ agent_graph.py          # LangGraph stavový graf a systémový prompt
 ├─ tools.py                # Tavily + Postgres tools
 ├─ migrations/001_create_movie_reviews.sql
@@ -61,5 +61,5 @@ Paměť: posledních 10 zpráv (ekvivalent MemoryBufferWindow). Agent automatick
   - `postgres_select_reviews()` načítá uložené ratingy.
   - `postgres_upsert_review(movie_name, rating)` validuje 1–10 a dělá upsert na unikátní `movie_name`.
   - `postgres_healthcheck()` ověří, že Postgres je dostupný (užitečné pro lokální Podman).
-- LLM: OpenAI chat model (`OPENAI_MODEL`, default `gpt-4.1-mini`) s teplotou 0.2.
+- LLM: OpenAI chat model (`OPENAI_MODEL`, default `gpt-4o-mini`) s teplotou 0.2.
 - Graf: agent node (LLM + tool calls) → tool node → agent; končí, když není potřeba tool.

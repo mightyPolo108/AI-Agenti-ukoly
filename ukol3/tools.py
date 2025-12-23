@@ -8,7 +8,6 @@ from typing import Any, Dict, List
 import psycopg
 from psycopg.rows import dict_row
 from tavily import TavilyClient
-from tavily.errors import TavilyError
 from langchain_core.tools import tool
 
 
@@ -33,10 +32,8 @@ def tavily_search(query: str) -> Dict[str, Any]:
     client = TavilyClient(api_key=api_key)
     try:
         resp = client.search(query=query, max_results=3)
-    except TavilyError as exc:
+    except Exception as exc:
         return {"error": f"Tavily error: {exc}"}
-    except Exception as exc:  # pragma: no cover - defensive
-        return {"error": f"Unexpected Tavily error: {exc}"}
 
     results = resp.get("results", [])
     trimmed = [
@@ -90,10 +87,9 @@ def postgres_upsert_review(movie_name: str, rating: int) -> Dict[str, Any]:
     return {"ok": True, "saved": saved}
 
 
-@tool
-def postgres_healthcheck() -> Dict[str, Any]:
+def run_postgres_healthcheck() -> Dict[str, Any]:
     """
-    Ověř, že Postgres běží (např. lokálně v Podmanu) a přijímá připojení.
+    Non-tool helper for checking DB connectivity.
     """
     try:
         with _get_db_connection() as conn, conn.cursor() as cur:
@@ -102,3 +98,11 @@ def postgres_healthcheck() -> Dict[str, Any]:
         return {"ok": True}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
+
+
+@tool
+def postgres_healthcheck() -> Dict[str, Any]:
+    """
+    Ověř, že Postgres běží (např. lokálně v Podmanu) a přijímá připojení.
+    """
+    return run_postgres_healthcheck()
