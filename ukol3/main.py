@@ -4,6 +4,7 @@ CLI chat rozhraní pro LangGraph movie assistant.
 
 import argparse
 import sys
+from time import perf_counter
 from typing import List
 
 from dotenv import load_dotenv
@@ -60,11 +61,14 @@ def run_cli(debug: bool = False) -> None:
         messages = trim_history(messages)
 
         prev_len = len(messages)
+        start_time = perf_counter()
         result = graph.invoke({"messages": messages})
+        duration = perf_counter() - start_time
         messages = result["messages"]
         new_messages = messages[prev_len:]
 
         if debug:
+            console.print(f"[cyan]Cycle duration (LLM + tools): {duration:.2f}s[/cyan]")
             for m in new_messages:
                 if m.type == "ai" and getattr(m, "tool_calls", None):
                     info_lines = []

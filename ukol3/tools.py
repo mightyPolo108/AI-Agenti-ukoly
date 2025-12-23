@@ -3,7 +3,7 @@ Tools for Tavily search and Postgres access.
 """
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import psycopg
 from psycopg.rows import dict_row
@@ -54,7 +54,7 @@ def postgres_select_reviews() -> List[Dict[str, Any]]:
     """
     with _get_db_connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT movie_name, rating, updated_at FROM public.movie_reviews "
+            "SELECT movie_name, rating, rating_reason, updated_at FROM public.movie_reviews "
             "ORDER BY updated_at DESC, movie_name ASC;"
         )
         rows = cur.fetchall()
@@ -62,25 +62,30 @@ def postgres_select_reviews() -> List[Dict[str, Any]]:
 
 
 @tool
-def postgres_upsert_review(movie_name: str, rating: int) -> Dict[str, Any]:
+def postgres_upsert_review(movie_name: str, rating: int, rating_reason: Optional[str] = None) -> Dict[str, Any]:
     """
-    Ulož nebo aktualizuj rating pro film. rating musí být 1-10.
+    Ulož nebo aktualizuj rating pro film spolu s textovým odůvodněním. rating musí být 1-10.
     """
     if not isinstance(rating, int):
         return {"error": "Rating musí být celé číslo 1-10."}
     if rating < 1 or rating > 10:
         return {"error": "Rating musí být 1-10."}
 
+    reason = "" if rating_reason is None else str(rating_reason)
+
     with _get_db_connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
-            INSERT INTO public.movie_reviews (movie_name, rating)
-            VALUES (%s, %s)
+            INSERT INTO public.movie_reviews (movie_name, rating, rating_reason)
+            VALUES (%s, %s, %s)
             ON CONFLICT (movie_name)
-            DO UPDATE SET rating = EXCLUDED.rating, updated_at = NOW()
-            RETURNING movie_name, rating, updated_at;
+            DO UPDATE SET
+              rating = EXCLUDED.rating,
+              rating_reason = EXCLUDED.rating_reason,
+              updated_at = NOW()
+            RETURNING movie_name, rating, rating_reason, updated_at;
             """,
-            (movie_name, rating),
+            (movie_name, rating, reason),
         )
         saved = cur.fetchone()
         conn.commit()
