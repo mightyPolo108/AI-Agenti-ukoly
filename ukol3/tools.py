@@ -3,6 +3,7 @@ Tools for Tavily search and Postgres access.
 """
 
 import os
+from time import perf_counter
 from typing import Any, Dict, List, Optional
 
 import psycopg
@@ -20,20 +21,29 @@ def _get_db_connection():
     return psycopg.connect(conninfo=database_url)
 
 
+def _with_duration(start: float, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Attach duration (seconds) to tool responses for debug visibility.
+    """
+    payload["duration_sec"] = round(perf_counter() - start, 3)
+    return payload
+
+
 @tool
 def tavily_search(query: str) -> Dict[str, Any]:
     """
     Vyhledávání informací o filmech. Vrací stručné výsledky s title/url/snippet.
     """
+    start = perf_counter()
     api_key = os.environ.get("TAVILY_API_KEY")
     if not api_key:
-        return {"error": "Missing TAVILY_API_KEY."}
+        return _with_duration(start, {"error": "Missing TAVILY_API_KEY."})
 
     client = TavilyClient(api_key=api_key)
     try:
         resp = client.search(query=query, max_results=3)
     except Exception as exc:
-        return {"error": f"Tavily error: {exc}"}
+        return _with_duration(start, {"error": f"Tavily error: {exc}"})
 
     results = resp.get("results", [])
     trimmed = [
@@ -44,21 +54,22 @@ def tavily_search(query: str) -> Dict[str, Any]:
         }
         for item in results
     ]
-    return {"results": trimmed}
+    return _with_duration(start, {"results": trimmed})
 
 
 @tool
-def postgres_select_reviews() -> List[Dict[str, Any]]:
+def postgres_select_reviews() -> Dict[str, Any]:
     """
-    Načti všechny uložené filmové ratingy z tabulky movie_reviews.
+    Načti všechny uložené filmové ratingy z tabulky movie_reviews (včetně rating_reason).
     """
+    start = perf_counter()
     with _get_db_connection() as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             "SELECT movie_name, rating, rating_reason, updated_at FROM public.movie_reviews "
             "ORDER BY updated_at DESC, movie_name ASC;"
         )
         rows = cur.fetchall()
-    return rows
+    return _with_duration(start, {"rows": rows})
 
 
 @tool
@@ -66,10 +77,11 @@ def postgres_upsert_review(movie_name: str, rating: int, rating_reason: Optional
     """
     Ulož nebo aktualizuj rating pro film spolu s textovým odůvodněním. rating musí být 1-10.
     """
+    start = perf_counter()
     if not isinstance(rating, int):
-        return {"error": "Rating musí být celé číslo 1-10."}
+        return _with_duration(start, {"error": "Rating musí být celé číslo 1-10."})
     if rating < 1 or rating > 10:
-        return {"error": "Rating musí být 1-10."}
+        return _with_duration(start, {"error": "Rating musí být 1-10."})
 
     reason = "" if rating_reason is None else str(rating_reason)
 
@@ -89,20 +101,21 @@ def postgres_upsert_review(movie_name: str, rating: int, rating_reason: Optional
         )
         saved = cur.fetchone()
         conn.commit()
-    return {"ok": True, "saved": saved}
+    return _with_duration(start, {"ok": True, "saved": saved})
 
 
 def run_postgres_healthcheck() -> Dict[str, Any]:
     """
     Non-tool helper for checking DB connectivity.
     """
+    start = perf_counter()
     try:
         with _get_db_connection() as conn, conn.cursor() as cur:
             cur.execute("SELECT 1;")
             cur.fetchone()
-        return {"ok": True}
+        return _with_duration(start, {"ok": True})
     except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+        return _with_duration(start, {"ok": False, "error": str(exc)})
 
 
 @tool
